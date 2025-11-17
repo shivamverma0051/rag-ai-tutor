@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  rag-ai-tutor:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - HOST=0.0.0.0
+      - PORT=8000
+    volumes:
+      - ./static:/app/static:ro
+    restart: unless-stopped

@@ -24,8 +24,13 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Configure Gemini API
-GEMINI_API_KEY = "YOUR_GEMINI_API_KEY_HERE"  # Replace with your actual API key
-GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+# Configuration
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")  # Use environment variable first
+GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent"
+
+# Validate API key
+if GEMINI_API_KEY == "YOUR_GEMINI_API_KEY_HERE" or not GEMINI_API_KEY:
+    logger.warning("⚠️  GEMINI_API_KEY not configured. Please set environment variable or update main.py")
 
 app = FastAPI(title="RAG-Based AI Tutor", description="AI Tutor with PDF RAG and Image Retrieval")
 
@@ -518,4 +523,12 @@ if __name__ == "__main__":
     import uvicorn
     # Create static directory if it doesn't exist
     os.makedirs("static", exist_ok=True)
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    
+    # Get port from environment variable (for deployment) or default to 8000
+    port = int(os.getenv("PORT", 8000))
+    host = os.getenv("HOST", "0.0.0.0")
+    
+    logger.info(f"🚀 Starting RAG AI Tutor on {host}:{port}")
+    logger.info(f"🔑 API Key configured: {'✅ Yes' if GEMINI_API_KEY and GEMINI_API_KEY != 'YOUR_GEMINI_API_KEY_HERE' else '❌ No'}")
+    
+    uvicorn.run(app, host=host, port=port)
