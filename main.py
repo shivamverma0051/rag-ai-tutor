@@ -220,50 +220,53 @@ def generate_answer(query: str, relevant_chunks: List[str]) -> str:
         
         # Create appropriate prompt based on query complexity
         if is_simple_query:
-            prompt = f"""You are an educational AI tutor. Answer this simple question based on the provided context from an uploaded PDF document.
+            prompt = f"""You are an educational AI tutor specializing in physics and science concepts. Based on the provided context from an uploaded PDF document, answer the student's question clearly and directly.
 
 **Context from PDF:**
 {context}
 
 **Student Question:** {query}
 
-Provide a brief, direct answer in this format:
+Provide a clear, educational answer in this EXACT format:
+
 📚 **Answer**
-• [Main explanation in 1-2 bullet points]
-• [Additional detail if needed]
+• [Clear definition or explanation of the main concept]
+• [Key characteristics or properties]
+• [Simple example or application if relevant]
 
-Keep it concise and focused."""
+**Important Rules:**
+1. Answer the EXACT question asked
+2. Use simple, clear language
+3. Stay focused on the main concept
+4. Use ONLY the provided context
+5. If context is insufficient, say so clearly"""
         else:
-            prompt = f"""You are an educational AI tutor specializing in educational content. Based on the provided context from an uploaded PDF document, answer the student's question in a clear, structured format.
+            prompt = f"""You are an expert educational AI tutor specializing in physics and science education. Based on the provided context from an uploaded PDF document, answer the student's question comprehensively.
 
 **Context from PDF:**
 {context}
 
 **Student Question:** {query}
 
-Please provide a comprehensive answer in this EXACT format:
+Provide a comprehensive answer in this EXACT format:
 
 📚 **Main Answer**
-• [Key point 1 explaining the main concept]
-• [Key point 2 with specific details]
-• [Key point 3 with additional explanation]
+• [Primary explanation of the concept]
+• [Key scientific principles involved]
+• [Important details from the context]
 
 💡 **Key Points**
-• [Important fact 1 from the context]
-• [Important fact 2 with specific data/numbers if available]
-• [Important fact 3 with practical application]
-
-🎓 **Educational Context**
-• [How this relates to physics principles]
+• [Specific facts or data from the document]
+• [Scientific relationships or formulas if mentioned]
 • [Real-world applications or examples]
 
-**Rules:**
-1. Use ONLY information from the provided context
-2. Format with bullet points as shown above
-3. Keep each bullet point concise (1-2 sentences)
-4. Include specific details, numbers, or examples when available
-5. Make it educational and easy to understand
-6. If the context doesn't contain enough information, say so clearly"""
+**Critical Rules:**
+1. Answer directly what was asked
+2. Use ONLY information from the provided context
+3. Format with clear bullet points
+4. Include specific details and examples when available
+5. Make it educational and scientifically accurate
+6. If context doesn't contain enough information, state this clearly"""
 
         # Prepare request payload
         payload = {
@@ -277,10 +280,10 @@ Please provide a comprehensive answer in this EXACT format:
                 }
             ],
             "generationConfig": {
-                "temperature": 0.7,
-                "maxOutputTokens": 1000,
-                "topP": 0.8,
-                "topK": 40
+                "temperature": 0.3,  # Lower temperature for more focused responses
+                "maxOutputTokens": 800,  # Reasonable limit
+                "topP": 0.9,
+                "topK": 20
             }
         }
         

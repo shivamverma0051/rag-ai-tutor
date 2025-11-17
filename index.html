@@ -436,21 +436,31 @@
             messageInput.focus();
         }
         
-        // Chat functionality
-        sendBtn.addEventListener('click', sendMessage);
+        // Chat functionality with debouncing
+        let submitTimeout;
+        sendBtn.addEventListener('click', () => {
+            clearTimeout(submitTimeout);
+            submitTimeout = setTimeout(sendMessage, 100); // 100ms debounce
+        });
+        
         messageInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                sendMessage();
+                clearTimeout(submitTimeout);
+                submitTimeout = setTimeout(sendMessage, 100); // 100ms debounce
             }
         });
         
         async function sendMessage() {
             const message = messageInput.value.trim();
-            if (!message || isProcessing) return;
+            if (!message || isProcessing) {
+                console.log('Message empty or already processing, skipping...');
+                return;
+            }
             
             // Prevent duplicate submissions
             isProcessing = true;
+            console.log('Starting message processing...');
             
             // Add user message immediately
             addMessage(message, 'user');
@@ -462,6 +472,7 @@
             loading.classList.add('show');
             
             try {
+                console.log('Sending request to server...');
                 const response = await fetch('/chat', {
                     method: 'POST',
                     headers: {
@@ -473,17 +484,21 @@
                     })
                 });
                 
+                console.log('Response status:', response.status);
+                
                 if (!response.ok) {
                     throw new Error(`Server error: ${response.status}`);
                 }
                 
                 const result = await response.json();
+                console.log('Received response from server');
                 
                 // Hide loading before showing response
                 loading.classList.remove('show');
                 
                 // Add AI response with streaming effect
                 await addStreamingMessage(result.answer, result.image);
+                console.log('Finished processing message');
                 
             } catch (error) {
                 loading.classList.remove('show');
@@ -495,6 +510,7 @@
                 sendBtn.disabled = false;
                 messageInput.focus();
                 isProcessing = false;
+                console.log('Message processing complete, ready for next message');
             }
         }
         
@@ -569,26 +585,50 @@
         
         function formatResponseIntoSections(text) {
             const sections = [];
-            const lines = text.split('\n').filter(line => line.trim());
+            
+            // Clean the text first - remove extra escape characters and fix formatting
+            let cleanText = text
+                .replace(/\\\\n/g, '\n')  // Fix escaped newlines
+                .replace(/\\\\\\*/g, '*')   // Fix escaped asterisks
+                .replace(/\n{3,}/g, '\n\n')  // Remove excessive newlines
+                .trim();
+            
+            const lines = cleanText.split('\n').filter(line => line.trim());
             
             let currentSection = [];
             
             for (const line of lines) {
-                if (line.includes('📚') || line.includes('💡') || line.includes('🎓')) {
+                const trimmedLine = line.trim();
+                
+                // Check for section headers (with emojis)
+                if (trimmedLine.includes('📚') || trimmedLine.includes('💡') || trimmedLine.includes('🎓')) {
                     if (currentSection.length > 0) {
                         sections.push(currentSection.join('\n'));
                         currentSection = [];
                     }
-                    currentSection.push(`<div class="section-header">${line}</div>`);
-                } else if (line.trim().startsWith('•')) {
-                    currentSection.push(`<div class="bullet-point">${line.replace('•', '').trim()}</div>`);
-                } else if (line.trim()) {
-                    currentSection.push(`<div style="margin: 8px 0;">${line}</div>`);
+                    currentSection.push(`<div class="section-header">${trimmedLine}</div>`);
+                } else if (trimmedLine.startsWith('•') || trimmedLine.startsWith('-')) {
+                    // Handle bullet points
+                    const bulletText = trimmedLine.replace(/^[•\-]\s*/, '').trim();
+                    currentSection.push(`<div class="bullet-point">• ${bulletText}</div>`);
+                } else if (trimmedLine.startsWith('**') && trimmedLine.endsWith('**')) {
+                    // Handle bold headers
+                    const headerText = trimmedLine.replace(/\*\*/g, '');
+                    currentSection.push(`<div class="section-header">${headerText}</div>`);
+                } else if (trimmedLine.length > 0) {
+                    // Regular text
+                    currentSection.push(`<div class="regular-text">${trimmedLine}</div>`);
                 }
             }
             
+            // Add the last section
             if (currentSection.length > 0) {
                 sections.push(currentSection.join('\n'));
+            }
+            
+            // If no sections were created, create a single section with the original text
+            if (sections.length === 0) {
+                sections.push(`<div class="regular-text">${cleanText}</div>`);
             }
             
             return sections;
