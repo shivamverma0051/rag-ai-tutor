@@ -112,18 +112,106 @@ def create_embeddings(chunks: List[str]) -> np.ndarray:
     embeddings = vectorizer.fit_transform(chunks)
     return embeddings.toarray(), vectorizer
 
-def retrieve_relevant_chunks(query: str, topic_id: str, k: int = 3) -> List[str]:
-    """Retrieve most relevant text chunks using cosine similarity"""
-    if topic_id not in embeddings_db:
+def retrieve_relevant_chunks(query: str, topic_id: str, k: int = 5) -> List[str]:
+    """Enhanced retrieval that prioritizes direct question matching"""
+    if topic_id not in text_chunks:
         return []
     
+    chunks = text_chunks[topic_id]
     vectorizer = vectorizers[topic_id]
-    query_embedding = vectorizer.transform([query])
+    
+    # Dramatically improve query preprocessing for better matching
+    query_lower = query.lower().strip()
+    
+    # For basic definition questions, prioritize fundamental concepts
+    if any(word in query_lower for word in ['what is', 'define', 'definition']):
+        if 'what is sound' in query_lower or 'define sound' in query_lower:
+            # Focus on basic sound definition, not specific applications
+            enhanced_query = "sound definition vibration energy waves medium air matter longitudinal pressure"
+        elif 'what is frequency' in query_lower:
+            enhanced_query = "frequency definition vibration cycles per second hertz pitch"
+        elif 'what is amplitude' in query_lower:
+            enhanced_query = "amplitude definition loudness volume intensity sound wave height"
+        elif 'what is' in query_lower:
+            concept = query_lower.replace('what is', '').replace('?', '').strip()
+            enhanced_query = f"{concept} definition basic fundamental concept explanation"
+        else:
+            enhanced_query = f"{query} definition explanation"
+    else:
+        enhanced_query = query
+    
+    # Use enhanced query for embedding
+    query_embedding = vectorizer.transform([enhanced_query])
     
     # Use FAISS for similarity search
     index = faiss_indexes[topic_id]
     similarities, indices = index.search(query_embedding.toarray().astype(np.float32), k)
     
+    # Get chunks with similarity scores
+    chunk_scores = list(zip(indices[0], similarities[0]))
+    
+    # For definition questions, also do keyword-based filtering
+    if any(word in query_lower for word in ['what is', 'define']):
+        main_concept = None
+        if 'what is sound' in query_lower:
+            main_concept = 'sound'
+        elif 'what is' in query_lower:
+            main_concept = query_lower.split('what is')[-1].strip().replace('?', '')
+        
+        if main_concept:
+            # Score chunks based on how well they define the concept
+            definition_scores = []
+            for idx, sim_score in chunk_scores:
+                if idx < len(chunks):
+                    chunk = chunks[idx].lower()
+                    def_score = 0
+                    
+                    # Boost chunks that contain definition patterns
+                    definition_patterns = [
+                        f"{main_concept} is",
+                        f"{main_concept} are",
+                        f"definition of {main_concept}",
+                        f"{main_concept} refers to",
+                        f"{main_concept} can be defined",
+                        f"what is {main_concept}",
+                        f"{main_concept}:",
+                        f"sound waves",
+                        f"longitudinal waves",
+                        f"compression and rarefaction"
+                    ]
+                    
+                    for pattern in definition_patterns:
+                        if pattern in chunk:
+                            def_score += 2.0
+                    
+                    # Penalize chunks about specific applications without definitions
+                    penalty_patterns = [
+                        "reflection", "echo", "doppler", "interference", 
+                        "experiment", "measurement", "calculation"
+                    ]
+                    
+                    for pattern in penalty_patterns:
+                        if pattern in chunk and main_concept not in chunk[:100]:  # Not in first 100 chars
+                            def_score -= 1.0
+                    
+                    # Boost chunks that mention the concept early
+                    if main_concept in chunk[:200]:
+                        def_score += 1.0
+                    
+                    # Combine similarity score with definition score
+                    combined_score = sim_score + def_score
+                    definition_scores.append((idx, combined_score))
+            
+            # Sort by combined score and take top chunks
+            definition_scores.sort(key=lambda x: x[1], reverse=True)
+            relevant_chunks = []
+            for idx, score in definition_scores[:k]:
+                if idx < len(chunks):
+                    relevant_chunks.append(chunks[idx])
+            
+            return relevant_chunks
+    
+    # Default behavior for non-definition questions
     relevant_chunks = []
     for idx in indices[0]:
         if idx < len(text_chunks[topic_id]):
@@ -220,53 +308,60 @@ def generate_answer(query: str, relevant_chunks: List[str]) -> str:
         
         # Create appropriate prompt based on query complexity
         if is_simple_query:
-            prompt = f"""You are an educational AI tutor specializing in physics and science concepts. Based on the provided context from an uploaded PDF document, answer the student's question clearly and directly.
+            prompt = f"""You are an educational AI tutor. The student has asked a specific question. You MUST answer their EXACT question directly.
+
+**CRITICAL INSTRUCTION**: The student asked: "{query}"
+You MUST answer this specific question. Do NOT talk about related topics unless they directly answer what was asked.
 
 **Context from PDF:**
 {context}
 
-**Student Question:** {query}
+**Student's EXACT Question:** {query}
 
-Provide a clear, educational answer in this EXACT format:
+Provide a direct answer in this EXACT format:
 
 📚 **Answer**
-• [Clear definition or explanation of the main concept]
-• [Key characteristics or properties]
-• [Simple example or application if relevant]
+• [Direct answer to the exact question asked]
+• [Key characteristics or properties that answer the question]
+• [Additional relevant detail that answers the question]
 
-**Important Rules:**
-1. Answer the EXACT question asked
-2. Use simple, clear language
-3. Stay focused on the main concept
-4. Use ONLY the provided context
-5. If context is insufficient, say so clearly"""
+**STRICT RULES:**
+1. Answer ONLY the question that was asked
+2. If they ask "what is sound" - define what sound IS, not about reflection or other topics
+3. If they ask "what is [concept]" - explain what that concept IS
+4. Use ONLY the provided context that relates to their specific question
+5. If the context doesn't contain the answer, say "The provided context doesn't contain enough information to answer your specific question about [topic]"
+6. Do NOT discuss related topics unless they directly answer the question"""
         else:
-            prompt = f"""You are an expert educational AI tutor specializing in physics and science education. Based on the provided context from an uploaded PDF document, answer the student's question comprehensively.
+            prompt = f"""You are an expert educational AI tutor. The student has asked a specific question and you MUST answer their EXACT question.
+
+**CRITICAL INSTRUCTION**: The student asked: "{query}"
+You MUST provide information that directly answers this specific question. Do NOT discuss unrelated topics.
 
 **Context from PDF:**
 {context}
 
-**Student Question:** {query}
+**Student's EXACT Question:** {query}
 
-Provide a comprehensive answer in this EXACT format:
+Provide a comprehensive answer that directly addresses their question in this EXACT format:
 
-📚 **Main Answer**
-• [Primary explanation of the concept]
-• [Key scientific principles involved]
-• [Important details from the context]
+📚 **Direct Answer to Your Question**
+• [Primary explanation that directly answers what they asked]
+• [Key facts that relate to their specific question]
+• [Important details that answer their question]
 
-💡 **Key Points**
-• [Specific facts or data from the document]
-• [Scientific relationships or formulas if mentioned]
-• [Real-world applications or examples]
+💡 **Key Points About [the topic they asked about]**
+• [Specific information from the context that answers their question]
+• [Scientific facts or data that relate to what they asked]
+• [Examples or applications that help answer their question]
 
-**Critical Rules:**
-1. Answer directly what was asked
-2. Use ONLY information from the provided context
-3. Format with clear bullet points
-4. Include specific details and examples when available
-5. Make it educational and scientifically accurate
-6. If context doesn't contain enough information, state this clearly"""
+**ABSOLUTE REQUIREMENTS:**
+1. Your answer MUST directly address what they asked
+2. If they ask "what is X" - explain what X IS, not about related topics
+3. If they ask about a specific concept, focus on that concept
+4. Use ONLY context information that helps answer their specific question
+5. If the provided context doesn't answer their specific question, clearly state: "The provided context discusses related topics but doesn't contain enough information to directly answer your question about [their topic]. Based on the available information..."
+6. Do NOT go off on tangents about related but different topics"""
 
         # Prepare request payload
         payload = {
@@ -338,16 +433,86 @@ def handle_simple_inputs(message: str) -> str:
     return None  # Not a simple input, proceed with normal processing
 
 def generate_fallback_answer(query: str, relevant_chunks: List[str]) -> str:
-    """Generate fallback answer when Gemini API fails"""
+    """Generate fallback answer when Gemini API fails - with better question matching"""
     if not relevant_chunks:
-        return "❓ **Information Not Available**\n\nI don't have enough information to answer that question. Please make sure you've uploaded a relevant PDF document."
+        return "❓ **Information Not Available**\\n\\nI don't have enough information to answer that question. Please make sure you've uploaded a relevant PDF document."
     
-    # Find most relevant chunk
+    # Find most relevant chunk based on the specific question
     query_lower = query.lower()
     query_words = [word.strip('.,?!') for word in query_lower.split()]
     
     best_chunk = ""
     best_score = 0
+    
+    # Special handling for definition questions
+    if 'what is' in query_lower or 'define' in query_lower:
+        concept = None
+        if 'what is sound' in query_lower:
+            concept = 'sound'
+        elif 'what is' in query_lower:
+            concept = query_lower.split('what is')[-1].strip().replace('?', '')
+        
+        if concept:
+            for chunk in relevant_chunks:
+                chunk_lower = chunk.lower()
+                score = 0
+                
+                # High score for chunks that define the concept
+                if f"{concept} is" in chunk_lower or f"{concept} are" in chunk_lower:
+                    score += 10
+                
+                # Boost for chunks that mention the concept early
+                if concept in chunk_lower[:100]:
+                    score += 5
+                
+                # Boost for definition-like content
+                definition_indicators = ['definition', 'refers to', 'can be defined as', 'is a type of']
+                for indicator in definition_indicators:
+                    if indicator in chunk_lower:
+                        score += 3
+                
+                # Penalize chunks about specific applications without basic definition
+                if any(word in chunk_lower for word in ['experiment', 'reflection', 'calculation']) and concept not in chunk_lower[:150]:
+                    score -= 5
+                
+                if score > best_score:
+                    best_score = score
+                    best_chunk = chunk
+    
+    # Fallback to basic keyword matching
+    if not best_chunk:
+        for chunk in relevant_chunks:
+            chunk_lower = chunk.lower()
+            score = sum(1 for word in query_words if word in chunk_lower)
+            
+            if score > best_score:
+                best_score = score
+                best_chunk = chunk
+    
+    if best_chunk:
+        # Create a focused answer based on the question
+        if 'what is' in query_lower:
+            concept = query_lower.replace('what is', '').strip().replace('?', '')
+            answer_parts = [
+                f"📚 **Answer about {concept.title()}**",
+                "",
+                f"Based on the uploaded document:",
+                f"• {best_chunk[:200]}..." if len(best_chunk) > 200 else f"• {best_chunk}",
+                "",
+                "💡 **Note**: This is extracted directly from your uploaded PDF content."
+            ]
+        else:
+            answer_parts = [
+                "📚 **Answer from Document**",
+                "",
+                f"• {best_chunk[:300]}..." if len(best_chunk) > 300 else f"• {best_chunk}",
+                "",
+                "💡 **Source**: Information extracted from your uploaded PDF."
+            ]
+        
+        return "\\n".join(answer_parts)
+    
+    return "❓ **Limited Information**\\n\\nThe uploaded document contains related information but may not directly answer your specific question. Please try rephrasing your question or uploading a more relevant document."
     
     for chunk in relevant_chunks:
         chunk_lower = chunk.lower()
