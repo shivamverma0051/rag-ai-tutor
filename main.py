@@ -220,78 +220,38 @@ def retrieve_relevant_chunks(query: str, topic_id: str, k: int = 5) -> List[str]
     return relevant_chunks
 
 def find_relevant_image(query: str, answer: str) -> Optional[Dict]:
-    """Find most relevant image based on enhanced keyword matching and content analysis"""
+    """Find most relevant image based on keyword matching"""
     if not image_metadata:
         return None
     
-    query_lower = query.lower()
-    answer_lower = answer.lower()
-    combined_text = f"{query_lower} {answer_lower}"
+    # Combine query and answer for keyword matching
+    combined_text = f"{query.lower()} {answer.lower()}"
     
-    # Enhanced scoring system
-    image_scores = []
+    best_image = None
+    best_score = 0
     
     for image in image_metadata:
         score = 0
-        keywords = [kw.lower() for kw in image['keywords']]
-        title_words = [word.lower() for word in image['title'].split()]
-        desc_words = [word.lower() for word in image['description'].split()]
         
-        # Primary keyword matches (high priority)
-        for keyword in keywords:
-            if keyword in combined_text:
-                # Boost score for exact keyword matches
-                score += 5
-                # Extra boost for query-specific matches
-                if keyword in query_lower:
-                    score += 3
-        
-        # Title word matches (medium priority)
-        for word in title_words:
-            if len(word) > 3 and word in combined_text:
+        # Check for keyword matches
+        for keyword in image['keywords']:
+            if keyword.lower() in combined_text:
                 score += 2
-                if word in query_lower:
-                    score += 2
         
-        # Description word matches (lower priority)
-        for word in desc_words:
-            if len(word) > 4 and word in combined_text:
+        # Check title matches
+        if image['title'].lower() in combined_text:
+            score += 3
+        
+        # Check description matches  
+        for word in image['description'].lower().split():
+            if len(word) > 3 and word in combined_text:
                 score += 1
         
-        # Contextual scoring for specific topics
-        topic_boosters = {
-            'bell': ['bell', 'ring', 'school', 'vibrat'],
-            'wave': ['wave', 'propagat', 'compress', 'sound'],
-            'instrument': ['music', 'guitar', 'drum', 'flute', 'sitar'],
-            'vocal': ['voice', 'speak', 'talk', 'vocal', 'throat'],
-            'frequency': ['frequency', 'pitch', 'hz', 'hertz', 'range'],
-            'echo': ['echo', 'reflect', 'bounce', 'experiment'],
-            'doppler': ['doppler', 'moving', 'motion', 'change'],
-            'hearing': ['hear', 'ear', 'listen', 'audible', 'range']
-        }
-        
-        for topic, boost_words in topic_boosters.items():
-            if any(word in combined_text for word in boost_words):
-                if topic in image['filename'] or any(boost_word in image['title'].lower() for boost_word in boost_words):
-                    score += 4
-        
-        image_scores.append((image, score))
+        if score > best_score:
+            best_score = score
+            best_image = image
     
-    # Sort by score and return best match
-    image_scores.sort(key=lambda x: x[1], reverse=True)
-    
-    if image_scores[0][1] > 0:
-        return image_scores[0][0]
-    
-    # Fallback: return most educationally relevant image
-    fallback_priorities = ['bell', 'sound_waves', 'musical_instruments', 'frequency_amplitude']
-    for priority in fallback_priorities:
-        for image in image_metadata:
-            if priority in image['filename']:
-                return image
-    
-    # Final fallback
-    return image_metadata[0] if image_metadata else None
+    return best_image if best_score > 0 else image_metadata[0]
 
 def generate_answer(query: str, relevant_chunks: List[str]) -> str:
     """Generate well-formatted answer using Gemini AI with retrieved context"""
@@ -308,65 +268,38 @@ def generate_answer(query: str, relevant_chunks: List[str]) -> str:
         
         # Create appropriate prompt based on query complexity
         if is_simple_query:
-            prompt = f"""You are an educational AI tutor. The student has asked a specific question. You MUST answer their EXACT question directly and completely.
-
-**CRITICAL INSTRUCTION**: The student asked: "{query}"
-You MUST provide a COMPLETE, STANDALONE explanation that fully answers this question. The student will see an educational image AFTER your text explanation, so your answer must be comprehensive on its own.
+            prompt = f"""You are an educational AI tutor. Answer this question based on the provided context.
 
 **Context from PDF:**
 {context}
 
-**Student's EXACT Question:** {query}
+**Student Question:** {query}
 
-Provide a COMPLETE, DETAILED answer in this EXACT format:
+Provide a clear answer:
 
 📚 **Answer**
-• [Clear, complete definition or explanation that fully answers the question]
-• [Essential characteristics, properties, or key concepts]
-• [Important details and examples that enhance understanding]
-• [Any additional relevant information that completes the explanation]
-
-**STRICT RULES:**
-1. Provide a COMPLETE answer - don't assume they'll see the image first
-2. Answer ONLY the question that was asked
-3. If they ask "what is sound" - define what sound IS comprehensively
-4. If they ask "what is [concept]" - explain that concept thoroughly
-5. Use ONLY the provided context that relates to their specific question
-6. Make your text explanation self-sufficient and complete
-7. Include key facts, definitions, and examples in your TEXT answer"""
+• [Main explanation]
+• [Key details]
+• [Additional information]"""
         else:
-            prompt = f"""You are an expert educational AI tutor. The student has asked a specific question and you MUST provide a COMPLETE, COMPREHENSIVE answer.
-
-**CRITICAL INSTRUCTION**: The student asked: "{query}"
-You MUST provide a thorough, complete explanation. A relevant educational image will be shown AFTER your text, so your explanation must be comprehensive and self-sufficient.
+            prompt = f"""You are an educational AI tutor. Answer this question based on the provided context.
 
 **Context from PDF:**
 {context}
 
-**Student's EXACT Question:** {query}
+**Student Question:** {query}
 
-Provide a comprehensive, complete answer in this EXACT format:
+Provide a structured answer:
 
-📚 **Complete Answer**
-• [Thorough primary explanation that fully addresses what they asked]
-• [Key scientific facts, principles, or definitions]
-• [Important details and characteristics]
-• [Examples or applications that enhance understanding]
+📚 **Main Answer**
+• [Key explanation]
+• [Important details]
+• [Additional information]
 
 💡 **Key Points**
-• [Specific information from the context about their topic]
-• [Scientific facts, data, or measurements if available]
-• [Real-world examples or practical applications]
-• [Additional important details that complete the answer]
-
-**ABSOLUTE REQUIREMENTS:**
-1. Provide a COMPLETE, COMPREHENSIVE text explanation
-2. Your answer MUST directly address what they asked in detail
-3. Don't say "as shown in the image" - make your text self-sufficient
-4. If they ask "what is X" - explain what X IS thoroughly with all key details
-5. Use ONLY context information that helps answer their specific question
-6. Include definitions, characteristics, examples, and applications in your TEXT
-7. Make your explanation complete enough that someone could understand without seeing any images"""
+• [Relevant facts]
+• [Examples if available]
+• [Applications]"""
 
         # Prepare request payload
         payload = {
