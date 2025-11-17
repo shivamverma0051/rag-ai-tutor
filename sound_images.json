@@ -1,0 +1,58 @@
+[
+  {
+    "id": "img_001",
+    "filename": "bell.png",
+    "title": "School Bell Vibration",
+    "keywords": ["bell", "vibration", "sound", "frequency", "oscillation", "school", "waves"],
+    "description": "School bell vibration diagram showing how striking a bell creates sound waves through vibration"
+  },
+  {
+    "id": "img_002",
+    "filename": "sound_waves.png",
+    "title": "Tuning Fork Sound Wave Propagation",
+    "keywords": ["tuning", "fork", "sound", "wave", "propagation", "compression", "rarefaction", "longitudinal"],
+    "description": "Tuning fork demonstrating sound wave propagation with compression and rarefaction zones"
+  },
+  {
+    "id": "img_003",
+    "filename": "frequency_amplitude.png",
+    "title": "Rubber Band Vibration Physics",
+    "keywords": ["rubber", "band", "vibration", "frequency", "amplitude", "wavelength", "pitch", "plucking"],
+    "description": "Rubber band vibration demonstration showing how plucking creates sound through vibrating motion"
+  },
+  {
+    "id": "img_004",
+    "filename": "human_ear.png",
+    "title": "Vocal Cords Sound Production",
+    "keywords": ["vocal", "cords", "voice", "sound", "production", "throat", "air", "vibration", "speech"],
+    "description": "Vocal cords diagram showing how air from lungs causes vocal cord vibration to produce sound"
+  },
+  {
+    "id": "img_005",
+    "filename": "echo_reflection.png",
+    "title": "Sound Echo Reflection Experiment",
+    "keywords": ["echo", "reflection", "experiment", "sound", "waves", "physics", "acoustics", "measurement"],
+    "description": "Scientific experiment setup demonstrating sound echo and reflection principles using cardboard tubes"
+  },
+  {
+    "id": "img_006",
+    "filename": "musical_instruments.png",
+    "title": "Musical Instruments Sound Production Chart",
+    "keywords": ["music", "instruments", "sitar", "flute", "drum", "strings", "wind", "percussion", "vibration"],
+    "description": "Comprehensive chart showing how different musical instruments (sitar, flute, drum) produce sound through various vibrating mechanisms"
+  },
+  {
+    "id": "img_007",
+    "filename": "ultrasound_infrasound.png",
+    "title": "Frequency Spectrum: Ultrasound and Infrasound",
+    "keywords": ["ultrasound", "infrasound", "frequency", "spectrum", "range", "hertz", "human", "hearing"],
+    "description": "Frequency spectrum diagram showing infrasound, human hearing range, and ultrasound with their respective frequency ranges"
+  },
+  {
+    "id": "img_008",
+    "filename": "doppler_effect.png",
+    "title": "Doppler Effect in Sound Waves",
+    "keywords": ["doppler", "effect", "frequency", "change", "motion", "waves", "moving", "source"],
+    "description": "Illustration of Doppler effect showing how sound frequency changes when source or observer is in motion"
+  }
+]

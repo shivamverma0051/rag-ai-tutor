@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG-Based AI Tutor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: flex;
+            min-height: 600px;
+        }
+
+        .upload-section {
+            flex: 1;
+            padding: 30px;
+            border-right: 1px solid #eee;
+        }
+
+        .chat-section {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            transition: border-color 0.3s;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+        }
+
+        .upload-area.dragover {
+            border-color: #667eea;
+            background-color: #f0f4ff;
+        }
+
+        .upload-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 20px;
+            transition: background-color 0.3s;
+        }
+
+        .upload-btn:hover {
+            background: #5a6fd8;
+        }
+
+        .upload-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 600px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+            border-bottom: 1px solid #eee;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            max-width: 80%;
+        }
+
+        .message.user {
+            background: #e3f2fd;
+            margin-left: auto;
+            text-align: right;
+        }
+
+        .message.ai {
+            background: #f5f5f5;
+            margin-right: auto;
+            line-height: 1.6;
+        }
+
+        .message.ai .answer-content {
+            white-space: pre-line;
+            margin-bottom: 15px;
+        }
+
+        .message.ai strong {
+            color: #2c3e50;
+            font-size: 1.1em;
+        }
+
+        .message.ai .emoji {
+            font-size: 1.2em;
+            margin-right: 5px;
+        }
+
+        .message.ai .image-container {
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .message.ai img {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .message.ai .image-caption {
+            margin-top: 10px;
+            font-style: italic;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .chat-input-container {
+            padding: 20px;
+            background: #fafafa;
+        }
+
+        .chat-input {
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input input {
+            flex: 1;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        .chat-input button {
+            padding: 15px 30px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+
+        .chat-input button:hover {
+            background: #5a6fd8;
+        }
+
+        .chat-input button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .typing-animation {
+            border-right: 2px solid #667eea;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { border-color: #667eea; }
+            51%, 100% { border-color: transparent; }
+        }
+
+        .streaming-text {
+            opacity: 0;
+            animation: fadeIn 0.3s ease-in forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .dots {
+            animation: dots 1.5s infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: ''; }
+            40% { content: '.'; }
+            60% { content: '..'; }
+            80%, 100% { content: '...'; }
+        }
+
+        .bullet-point {
+            margin: 8px 0;
+            padding-left: 15px;
+            position: relative;
+        }
+
+        .bullet-point::before {
+            content: "•";
+            color: #667eea;
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+        }
+
+        .section-header {
+            font-weight: bold;
+            color: #2c3e50;
+            margin: 15px 0 8px 0;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+            
+            .upload-section {
+                border-right: none;
+                border-bottom: 1px solid #eee;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>RAG-Based AI Tutor</h1>
+            <p>Upload a PDF and chat with your AI tutor that provides answers with relevant images</p>
+        </div>
+        
+        <div class="main-content">
+            <div class="upload-section">
+                <h2>Upload PDF Document</h2>
+                <div class="upload-area" id="uploadArea">
+                    <div>[FILE]</div>
+                    <p>Drag and drop your PDF here<br>or click to select</p>
+                    <input type="file" id="fileInput" accept=".pdf" style="display: none;">
+                    <button class="upload-btn" id="uploadBtn">Choose PDF File</button>
+                </div>
+                
+                <div class="status" id="uploadStatus"></div>
+            </div>
+            
+            <div class="chat-section">
+                <div class="chat-container">
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="message ai">
+                            <strong>AI Tutor:</strong> Welcome! Please upload a PDF document to start our conversation. I'll help you understand the content and show relevant images when explaining concepts.
+                            
+                            <div style="margin-top: 15px; padding: 15px; background: #e8f4f8; border-radius: 8px; border-left: 4px solid #2196F3;">
+                                <strong>💡 Try asking questions like:</strong><br>
+                                • "What is sound and how is it produced?"<br>
+                                • "Explain the range of human hearing"<br>
+                                • "How do musical instruments create sound?"<br>
+                                • "What is the Doppler effect?"<br>
+                                • "Describe sound wave propagation"<br>
+                                • "What causes an echo?"
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="loading" id="loading">
+                        <p>🤔 AI is thinking<span class="dots">...</span></p>
+                    </div>
+                    
+                    <div class="chat-input-container">
+                        <div class="chat-input">
+                            <input type="text" id="messageInput" placeholder="Ask a question about the uploaded document..." disabled>
+                            <button id="sendBtn" disabled>Send</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentTopicId = null;
+        let isProcessing = false;  // Flag to prevent duplicate submissions
+        
+        // DOM elements
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const uploadStatus = document.getElementById('uploadStatus');
+        const chatMessages = document.getElementById('chatMessages');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const loading = document.getElementById('loading');
+        
+        // Upload functionality
+        uploadBtn.addEventListener('click', () => fileInput.click());
+        
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && files[0].type === 'application/pdf') {
+                handleFileUpload(files[0]);
+            }
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileUpload(e.target.files[0]);
+            }
+        });
+        
+        async function handleFileUpload(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = 'Uploading...';
+            
+            showStatus('Processing PDF...', 'success');
+            
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    currentTopicId = result.topic_id;
+                    showStatus(`PDF processed successfully! Found ${result.chunks_count} text chunks.`, 'success');
+                    enableChat();
+                } else {
+                    showStatus(`Error: ${result.detail}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`Error uploading file: ${error.message}`, 'error');
+            } finally {
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = 'Choose PDF File';
+            }
+        }
+        
+        function showStatus(message, type) {
+            uploadStatus.textContent = message;
+            uploadStatus.className = `status ${type}`;
+            uploadStatus.style.display = 'block';
+        }
+        
+        function enableChat() {
+            messageInput.disabled = false;
+            sendBtn.disabled = false;
+            messageInput.placeholder = 'Ask a question about the uploaded document...';
+            messageInput.focus();
+        }
+        
+        // Chat functionality
+        sendBtn.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+        
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message || isProcessing) return;
+            
+            // Prevent duplicate submissions
+            isProcessing = true;
+            
+            // Add user message immediately
+            addMessage(message, 'user');
+            messageInput.value = '';
+            
+            // Disable input and show loading
+            messageInput.disabled = true;
+            sendBtn.disabled = true;
+            loading.classList.add('show');
+            
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        topic_id: currentTopicId
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                
+                // Hide loading before showing response
+                loading.classList.remove('show');
+                
+                // Add AI response with streaming effect
+                await addStreamingMessage(result.answer, result.image);
+                
+            } catch (error) {
+                loading.classList.remove('show');
+                console.error('Chat error:', error);
+                addMessage(`❌ **Error**: Unable to get response. Please try again.`, 'ai');
+            } finally {
+                // Re-enable input and reset processing flag
+                messageInput.disabled = false;
+                sendBtn.disabled = false;
+                messageInput.focus();
+                isProcessing = false;
+            }
+        }
+        
+        function addMessage(text, sender, image = null) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+            
+            let content;
+            if (sender === 'user') {
+                content = `<strong>You:</strong> ${text}`;
+            } else {
+                // Format AI response with better structure
+                const formattedText = formatAIResponse(text);
+                content = `<strong>AI Tutor:</strong><div class="answer-content">${formattedText}</div>`;
+            }
+            
+            if (image && sender === 'ai') {
+                content += `
+                    <div class="image-container">
+                        <img src="/static/${image.filename}" alt="${image.title}" onerror="this.src='data:image/svg+xml,<svg xmlns=\\\"http://www.w3.org/2000/svg\\\" width=\\\"300\\\" height=\\\"200\\\"><rect width=\\\"100%\\\" height=\\\"100%\\\" fill=\\\"%23f0f0f0\\\"/><text x=\\\"50%\\\" y=\\\"50%\\\" text-anchor=\\\"middle\\\" fill=\\\"%23666\\\">${image.title}</text></svg>';">
+                        <div class="image-caption"><strong>${image.title}</strong><br>${image.description}</div>
+                    </div>
+                `;
+            }
+            
+            messageDiv.innerHTML = content;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        async function addStreamingMessage(text, image = null) {
+            // Create AI message container
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message ai';
+            
+            const headerDiv = document.createElement('div');
+            headerDiv.innerHTML = '<strong>AI Tutor:</strong>';
+            messageDiv.appendChild(headerDiv);
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'answer-content typing-animation';
+            messageDiv.appendChild(contentDiv);
+            
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            // Format text into bullet points
+            const formattedSections = formatResponseIntoSections(text);
+            
+            // Stream each section with typing effect
+            for (let i = 0; i < formattedSections.length; i++) {
+                await typeText(contentDiv, formattedSections[i], i === formattedSections.length - 1);
+                await delay(300); // Pause between sections
+            }
+            
+            // Remove typing cursor
+            contentDiv.classList.remove('typing-animation');
+            
+            // Add image if available
+            if (image) {
+                await delay(500);
+                const imageContainer = document.createElement('div');
+                imageContainer.className = 'image-container streaming-text';
+                imageContainer.innerHTML = `
+                    <img src="/static/${image.filename}" alt="${image.title}" onerror="this.src='data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"300\" height=\"200\"><rect width=\"100%\" height=\"100%\" fill=\"%23f0f0f0\"/><text x=\"50%\" y=\"50%\" text-anchor=\"middle\" fill=\"%23666\">${image.title}</text></svg>';">
+                    <div class="image-caption"><strong>${image.title}</strong><br>${image.description}</div>
+                `;
+                messageDiv.appendChild(imageContainer);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+        }
+        
+        function formatResponseIntoSections(text) {
+            const sections = [];
+            const lines = text.split('\n').filter(line => line.trim());
+            
+            let currentSection = [];
+            
+            for (const line of lines) {
+                if (line.includes('📚') || line.includes('💡') || line.includes('🎓')) {
+                    if (currentSection.length > 0) {
+                        sections.push(currentSection.join('\n'));
+                        currentSection = [];
+                    }
+                    currentSection.push(`<div class="section-header">${line}</div>`);
+                } else if (line.trim().startsWith('•')) {
+                    currentSection.push(`<div class="bullet-point">${line.replace('•', '').trim()}</div>`);
+                } else if (line.trim()) {
+                    currentSection.push(`<div style="margin: 8px 0;">${line}</div>`);
+                }
+            }
+            
+            if (currentSection.length > 0) {
+                sections.push(currentSection.join('\n'));
+            }
+            
+            return sections;
+        }
+        
+        async function typeText(container, text, isLast = false) {
+            const words = text.split(' ');
+            let currentText = '';
+            
+            for (let i = 0; i < words.length; i++) {
+                currentText += (i > 0 ? ' ' : '') + words[i];
+                container.innerHTML = currentText;
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                
+                // Vary typing speed
+                const delay_time = words[i].length > 6 ? 80 : 50;
+                await delay(delay_time);
+            }
+        }
+        
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+        
+        function formatAIResponse(text) {
+            // Convert markdown-style formatting to HTML
+            let formatted = text
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')  // Bold
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')              // Italic
+                .replace(/^(📚|💡|🎓|❓)/gm, '<span class="emoji">$1</span>'); // Emojis
+            
+            return formatted;
+        }
+    </script>
+</body>
+</html>
