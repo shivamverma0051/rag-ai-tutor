@@ -268,38 +268,58 @@ def generate_answer(query: str, relevant_chunks: List[str]) -> str:
         
         # Create appropriate prompt based on query complexity
         if is_simple_query:
-            prompt = f"""You are an educational AI tutor. Answer this question based on the provided context.
+            prompt = f"""You are an educational AI tutor powered by Google Gemini AI. Provide a comprehensive, detailed answer to the student's question using the context from their uploaded PDF.
 
 **Context from PDF:**
 {context}
 
 **Student Question:** {query}
 
-Provide a clear answer:
+**Instructions:** Provide a COMPLETE educational explanation with thorough details. This is part of a RAG-based AI tutoring system that will show relevant images after your text response.
 
-📚 **Answer**
-• [Main explanation]
-• [Key details]
-• [Additional information]"""
+Format your answer as:
+
+📚 **Complete Definition & Explanation**
+• [Comprehensive definition of the concept with full details]
+• [Key characteristics, properties, and scientific principles]
+• [How the process works with step-by-step explanation]
+• [Real-world examples and practical applications]
+• [Important facts and additional context from the PDF]
+
+💡 **Educational Summary**
+• [Main takeaways for the student]
+• [Why this concept is important to understand]
+
+**Critical:** Provide thorough explanations (minimum 3-4 detailed bullet points) so students get complete understanding before seeing visual aids."""
         else:
-            prompt = f"""You are an educational AI tutor. Answer this question based on the provided context.
+            prompt = f"""You are an advanced educational AI tutor powered by Google Gemini AI. Provide a detailed, comprehensive answer to the student's complex question using the context from their uploaded PDF.
 
 **Context from PDF:**
 {context}
 
 **Student Question:** {query}
 
-Provide a structured answer:
+**Instructions:** Give a complete, thorough educational response. This is part of a sophisticated RAG-based AI tutoring system that will display relevant educational images after your detailed explanation.
 
-📚 **Main Answer**
-• [Key explanation]
-• [Important details]
-• [Additional information]
+Format your answer as:
 
-💡 **Key Points**
-• [Relevant facts]
-• [Examples if available]
-• [Applications]"""
+📚 **Comprehensive Analysis**
+• [In-depth explanation of the main concept with scientific details]
+• [Detailed characteristics, properties, and underlying principles]
+• [Step-by-step breakdown of how the process works]
+• [Mathematical relationships or formulas if applicable]
+
+💡 **Key Educational Points**
+• [Specific facts, data, and measurements from the PDF]
+• [Real-world examples and practical applications]
+• [Connections to other related concepts]
+• [Historical context or recent developments]
+
+🎯 **Learning Objectives Met**
+• [What the student should understand after reading this]
+• [How this knowledge can be applied]
+
+**Critical:** Provide extensive detail (minimum 6-8 bullet points total) to ensure complete educational value before visual aids are shown."""
 
         # Prepare request payload
         payload = {
@@ -320,12 +340,13 @@ Provide a structured answer:
             }
         }
         
-        # Make API request to Gemini
+        # Make API request to Gemini with better error handling
         headers = {
             'Content-Type': 'application/json',
             'X-goog-api-key': GEMINI_API_KEY
         }
         
+        logger.info(f"Sending request to Gemini API for query: {query}")
         response = requests.post(GEMINI_API_URL, headers=headers, json=payload, timeout=30)
         
         if response.status_code == 200:
@@ -333,10 +354,18 @@ Provide a structured answer:
             if 'candidates' in result and len(result['candidates']) > 0:
                 generated_text = result['candidates'][0]['content']['parts'][0]['text']
                 logger.info("Successfully generated answer with Gemini")
-                return generated_text.strip()
+                # Ensure we have a substantial response
+                if len(generated_text.strip()) > 50:
+                    return generated_text.strip()
+                else:
+                    logger.warning("Gemini response too short, using enhanced fallback")
+                    return generate_fallback_answer(query, relevant_chunks)
             else:
                 logger.error(f"No candidates in Gemini response: {result}")
                 return generate_fallback_answer(query, relevant_chunks)
+        elif response.status_code == 429:
+            logger.warning("Gemini API quota exceeded, using enhanced fallback with comprehensive definitions")
+            return generate_fallback_answer(query, relevant_chunks)
         else:
             logger.error(f"Gemini API error: {response.status_code} - {response.text}")
             return generate_fallback_answer(query, relevant_chunks)
@@ -352,7 +381,7 @@ def handle_simple_inputs(message: str) -> str:
     # Greetings
     greetings = ['hi', 'hello', 'hey', 'good morning', 'good afternoon', 'good evening']
     if any(greeting in message_lower for greeting in greetings):
-        return "👋 **Hello! Welcome to your AI Tutor!**\n\n• Upload a PDF document to get started\n• Ask questions about the content\n• I'll provide answers with relevant images\n\nHow can I help you learn today?"
+        return "👋 **Hello! Welcome to the RAG-Based AI Tutor!**\n\n🚀 **About This Project:**\n• Advanced educational AI system combining RAG pipeline with Google Gemini AI\n• Intelligent PDF processing with TF-IDF embeddings and FAISS vector search\n• Comprehensive answers with educational images and diagrams\n• Built with FastAPI backend and modern web interface\n\n📚 **How to Use:**\n• Upload your educational PDF documents\n• Ask questions about the content\n• Receive detailed explanations with relevant visual aids\n\nLet's start your learning journey!"
     
     # Thanks
     thanks = ['thanks', 'thank you', 'thx']
@@ -371,86 +400,184 @@ def handle_simple_inputs(message: str) -> str:
     return None  # Not a simple input, proceed with normal processing
 
 def generate_fallback_answer(query: str, relevant_chunks: List[str]) -> str:
-    """Generate fallback answer when Gemini API fails - with better question matching"""
+    """Generate comprehensive fallback answer when Gemini API fails"""
     if not relevant_chunks:
-        return "❓ **Information Not Available**\\n\\nI don't have enough information to answer that question. Please make sure you've uploaded a relevant PDF document."
+        return "❓ **Information Not Available**\n\nI don't have enough information to answer that question. Please make sure you've uploaded a relevant PDF document."
     
-    # Find most relevant chunk based on the specific question
     query_lower = query.lower()
-    query_words = [word.strip('.,?!') for word in query_lower.split()]
     
-    best_chunk = ""
-    best_score = 0
-    
-    # Special handling for definition questions
+    # Enhanced definition generation for common questions
     if 'what is' in query_lower or 'define' in query_lower:
+        # Extract the concept being asked about
         concept = None
         if 'what is sound' in query_lower:
             concept = 'sound'
+        elif 'what is reflection' in query_lower:
+            concept = 'reflection of sound'
+        elif 'what is doppler' in query_lower or 'what is dopler' in query_lower:
+            concept = 'doppler effect'
+        elif 'what is echo' in query_lower:
+            concept = 'echo'
+        elif 'what is frequency' in query_lower:
+            concept = 'frequency'
+        elif 'what is amplitude' in query_lower:
+            concept = 'amplitude'
         elif 'what is' in query_lower:
             concept = query_lower.split('what is')[-1].strip().replace('?', '')
         
-        if concept:
-            for chunk in relevant_chunks:
-                chunk_lower = chunk.lower()
-                score = 0
-                
-                # High score for chunks that define the concept
-                if f"{concept} is" in chunk_lower or f"{concept} are" in chunk_lower:
-                    score += 10
-                
-                # Boost for chunks that mention the concept early
-                if concept in chunk_lower[:100]:
-                    score += 5
-                
-                # Boost for definition-like content
-                definition_indicators = ['definition', 'refers to', 'can be defined as', 'is a type of']
-                for indicator in definition_indicators:
-                    if indicator in chunk_lower:
-                        score += 3
-                
-                # Penalize chunks about specific applications without basic definition
-                if any(word in chunk_lower for word in ['experiment', 'reflection', 'calculation']) and concept not in chunk_lower[:150]:
-                    score -= 5
-                
-                if score > best_score:
-                    best_score = score
-                    best_chunk = chunk
-    
-    # Fallback to basic keyword matching
-    if not best_chunk:
-        for chunk in relevant_chunks:
-            chunk_lower = chunk.lower()
-            score = sum(1 for word in query_words if word in chunk_lower)
-            
-            if score > best_score:
-                best_score = score
-                best_chunk = chunk
-    
-    if best_chunk:
-        # Create a focused answer based on the question
-        if 'what is' in query_lower:
-            concept = query_lower.replace('what is', '').strip().replace('?', '')
-            answer_parts = [
-                f"📚 **Answer about {concept.title()}**",
-                "",
-                f"Based on the uploaded document:",
-                f"• {best_chunk[:200]}..." if len(best_chunk) > 200 else f"• {best_chunk}",
-                "",
-                "💡 **Note**: This is extracted directly from your uploaded PDF content."
-            ]
-        else:
-            answer_parts = [
-                "📚 **Answer from Document**",
-                "",
-                f"• {best_chunk[:300]}..." if len(best_chunk) > 300 else f"• {best_chunk}",
-                "",
-                "💡 **Source**: Information extracted from your uploaded PDF."
-            ]
+        # Generate comprehensive definition using PDF context
+        context_text = " ".join(relevant_chunks[:3])
         
-        return "\\n".join(answer_parts)
+        # Extract relevant sentences and information - More flexible approach
+        sentences = []
+        # Split by multiple sentence markers
+        for delimiter in ['.', '!', '?']:
+            if delimiter in context_text:
+                parts = context_text.split(delimiter)
+                for part in parts:
+                    if len(part.strip()) > 20:
+                        sentences.append(part.strip())
+        
+        concept_sentences = []
+        
+        if concept:
+            concept_words = concept.lower().split()
+            
+            # First pass - Direct concept matches
+            for sentence in sentences:
+                sentence_lower = sentence.lower()
+                word_matches = sum(1 for word in concept_words if word in sentence_lower)
+                if word_matches > 0:
+                    if len(sentence.strip()) > 30:
+                        concept_sentences.append(sentence.strip())
+            
+            # If no direct matches, try broader search
+            if not concept_sentences:
+                for sentence in sentences:
+                    sentence_lower = sentence.lower()
+                    # Look for any physics/science related terms
+                    if any(term in sentence_lower for term in ['wave', 'frequency', 'sound', 'vibration', 'phenomenon', 'effect', 'occurs', 'produced', 'result']):
+                        if len(sentence.strip()) > 30:
+                            concept_sentences.append(sentence.strip())
+            
+            # If still no matches, take the most relevant chunks directly
+            if not concept_sentences and relevant_chunks:
+                for chunk in relevant_chunks[:2]:
+                    # Clean up chunk content
+                    clean_chunk = chunk.replace('\\n', ' ').replace('  ', ' ').strip()
+                    if len(clean_chunk) > 50:
+                        concept_sentences.append(clean_chunk[:200] + "..." if len(clean_chunk) > 200 else clean_chunk)
+        
+        # Ensure we always have some content to show
+        if not concept_sentences and relevant_chunks:
+            # Fallback to showing relevant chunks directly
+            concept_sentences = [chunk[:150] + "..." if len(chunk) > 150 else chunk for chunk in relevant_chunks[:2]]
+        
+        if concept_sentences:
+            # Create a comprehensive definition response with proper newlines
+            logger.info(f"Found {len(concept_sentences)} concept sentences for '{concept}'")
+            answer_lines = []
+            answer_lines.append(f"📚 **Complete Definition: {concept.title()}**")
+            answer_lines.append("")
+            
+            # Add the main definition
+            definition = f"• **Definition**: {concept_sentences[0]}"
+            if not concept_sentences[0].endswith('.'):
+                definition += "."
+            answer_lines.append(definition)
+            logger.info(f"Main definition: {definition[:100]}...")
+            answer_lines.append("")
+            
+            # Add additional characteristics if available
+            if len(concept_sentences) > 1:
+                characteristics = f"• **Key Characteristics**: {concept_sentences[1]}"
+                if not concept_sentences[1].endswith('.'):
+                    characteristics += "."
+                answer_lines.append(characteristics)
+                logger.info(f"Key characteristics: {characteristics[:100]}...")
+                answer_lines.append("")
+            
+            # Add more details if available
+            if len(concept_sentences) > 2:
+                additional = f"• **Additional Information**: {concept_sentences[2]}"
+                if not concept_sentences[2].endswith('.'):
+                    additional += "."
+                answer_lines.append(additional)
+                logger.info(f"Additional info: {additional[:100]}...")
+                answer_lines.append("")
+            
+            answer_lines.append("💡 **Educational Context**")
+            answer_lines.append(f"• This information is extracted and processed from your uploaded educational PDF")
+            answer_lines.append(f"• The content provides foundational understanding of {concept}")
+            answer_lines.append(f"• Additional context and examples may be available in the complete document")
+            
+            full_answer = "\n".join(answer_lines)
+            logger.info(f"Full answer length: {len(full_answer)} characters")
+            logger.info(f"Answer preview: {full_answer[:200]}...")
+            return full_answer
+        else:
+            # If no concept sentences found, show what we have from chunks
+            logger.warning(f"No concept sentences found for '{concept}', showing available content")
+            answer_lines = []
+            answer_lines.append(f"📚 **Information about: {concept.title()}**")
+            answer_lines.append("")
+            
+            if relevant_chunks:
+                answer_lines.append("• **Available Information**:")
+                for i, chunk in enumerate(relevant_chunks[:2]):
+                    clean_chunk = chunk.replace('\\n', ' ').strip()
+                    if len(clean_chunk) > 100:
+                        answer_lines.append(f"  - {clean_chunk[:200]}...")
+                    else:
+                        answer_lines.append(f"  - {clean_chunk}")
+                answer_lines.append("")
+            
+            answer_lines.append("💡 **Educational Context**")
+            answer_lines.append("• This information is extracted and processed from your uploaded educational PDF")
+            answer_lines.append(f"• The content provides foundational understanding of {concept}")
+            answer_lines.append("• Additional context and examples may be available in the complete document")
+            
+            return "\n".join(answer_lines)
     
-    return "❓ **Limited Information**\\n\\nThe uploaded document contains related information but may not directly answer your specific question. Please try rephrasing your question or uploading a more relevant document."
+    # For non-definition questions, provide contextual answers
+    context_text = " ".join(relevant_chunks[:2])
+    query_words = query_lower.split()
+    
+    # Find most relevant sentences
+    relevant_sentences = []
+    for sentence in context_text.split('.'):
+        if len(sentence.strip()) > 20:
+            sentence_lower = sentence.lower()
+            word_matches = sum(1 for word in query_words if word in sentence_lower)
+            if word_matches > 0:
+                relevant_sentences.append(sentence.strip())
+    
+    if relevant_sentences:
+        answer_lines = []
+        answer_lines.append("📚 **Answer Based on Document Content**")
+        answer_lines.append("")
+        
+        for i, sentence in enumerate(relevant_sentences[:3]):
+            sentence_text = sentence.strip()
+            if not sentence_text.endswith('.'):
+                sentence_text += "."
+            answer_lines.append(f"• {sentence_text}")
+        
+        answer_lines.append("")
+        answer_lines.append("💡 **Source Information**")
+        answer_lines.append("• Content extracted from your uploaded educational PDF")
+        answer_lines.append("• Information processed through RAG pipeline for relevance")
+        
+        return "\n".join(answer_lines)
+    
+    # Final fallback
+    answer_lines = []
+    answer_lines.append("📚 **Document Information**")
+    answer_lines.append("")
+    answer_lines.append(f"Based on the uploaded content: {context_text[:300]}...")
+    answer_lines.append("")
+    answer_lines.append("💡 **Note**: This information is extracted from your educational PDF document.")
+    return "\n".join(answer_lines)
     
     for chunk in relevant_chunks:
         chunk_lower = chunk.lower()

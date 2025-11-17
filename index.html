@@ -285,6 +285,53 @@
             padding-bottom: 5px;
         }
 
+        .main-subtitle {
+            font-size: 1.2rem;
+            color: #666;
+            margin-bottom: 1rem;
+        }
+        
+        .project-description {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin: 1.5rem 0;
+            text-align: center;
+        }
+        
+        .project-description p {
+            margin: 0;
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+        
+        .tech-features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+        
+        .tech-feature {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            border: 2px solid #e9ecef;
+            transition: border-color 0.3s;
+        }
+        
+        .tech-feature:hover {
+            border-color: #667eea;
+        }
+        
+        .tech-feature .icon {
+            display: block;
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
         @media (max-width: 768px) {
             .main-content {
                 flex-direction: column;
@@ -300,8 +347,29 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>RAG-Based AI Tutor</h1>
-            <p>Upload a PDF and chat with your AI tutor that provides answers with relevant images</p>
+            <h1>🎓 RAG-Based AI Tutor With Images</h1>
+            <p class="main-subtitle">Advanced AI Learning Assistant with Visual Content Support</p>
+            <div class="project-description">
+                <p><strong>🚀 Project Overview:</strong> This is an intelligent educational AI tutor that combines Retrieval-Augmented Generation (RAG) with Google Gemini AI to provide comprehensive learning experiences with visual content.</p>
+            </div>
+            <div class="tech-features">
+                <div class="tech-feature">
+                    <span class="icon">📚</span>
+                    <span>Smart PDF Analysis & RAG Pipeline</span>
+                </div>
+                <div class="tech-feature">
+                    <span class="icon">🤖</span>
+                    <span>Google Gemini AI Integration</span>
+                </div>
+                <div class="tech-feature">
+                    <span class="icon">🖼️</span>
+                    <span>Educational Images & Diagrams</span>
+                </div>
+                <div class="tech-feature">
+                    <span class="icon">🔍</span>
+                    <span>FAISS Vector Search</span>
+                </div>
+            </div>
         </div>
         
         <div class="main-content">
@@ -321,13 +389,27 @@
                 <div class="chat-container">
                     <div class="chat-messages" id="chatMessages">
                         <div class="message ai">
-                            <strong>AI Tutor:</strong> Welcome! Please upload a PDF document to start our conversation. I'll help you understand the content and show relevant images when explaining concepts.
+                            <strong>🎓 RAG-Based AI Tutor:</strong> Welcome to your advanced educational AI assistant! 
                             
-                            <div style="margin-top: 15px; padding: 15px; background: #e8f4f8; border-radius: 8px; border-left: 4px solid #2196F3;">
+                            <div style="margin: 15px 0; padding: 15px; background: #e8f4f8; border-radius: 8px; border-left: 4px solid #2196F3;">
+                                <strong>🚀 About This System:</strong><br>
+                                • <strong>RAG Pipeline:</strong> Intelligent document processing with FAISS vector search<br>
+                                • <strong>Google Gemini AI:</strong> Advanced language model for comprehensive explanations<br>
+                                • <strong>Visual Learning:</strong> Educational images and diagrams support<br>
+                                • <strong>Smart Analysis:</strong> TF-IDF embeddings with cosine similarity matching
+                            </div>
+                            
+                            <div style="margin-top: 15px; padding: 15px; background: #f0f8e8; border-radius: 8px; border-left: 4px solid #4CAF50;">
+                                <strong>📚 How to Use:</strong><br>
+                                1. Upload your educational PDF document<br>
+                                2. Ask detailed questions about the content<br>
+                                3. Receive comprehensive explanations with relevant images<br><br>
                                 <strong>💡 Try asking questions like:</strong><br>
                                 • "What is sound and how is it produced?"<br>
                                 • "Explain the range of human hearing"<br>
                                 • "How do musical instruments create sound?"<br>
+                                • "What is reflection of sound?"
+                            </div>
                                 • "What is the Doppler effect?"<br>
                                 • "Describe sound wave propagation"<br>
                                 • "What causes an echo?"
