@@ -308,60 +308,65 @@ def generate_answer(query: str, relevant_chunks: List[str]) -> str:
         
         # Create appropriate prompt based on query complexity
         if is_simple_query:
-            prompt = f"""You are an educational AI tutor. The student has asked a specific question. You MUST answer their EXACT question directly.
+            prompt = f"""You are an educational AI tutor. The student has asked a specific question. You MUST answer their EXACT question directly and completely.
 
 **CRITICAL INSTRUCTION**: The student asked: "{query}"
-You MUST answer this specific question. Do NOT talk about related topics unless they directly answer what was asked.
+You MUST provide a COMPLETE, STANDALONE explanation that fully answers this question. The student will see an educational image AFTER your text explanation, so your answer must be comprehensive on its own.
 
 **Context from PDF:**
 {context}
 
 **Student's EXACT Question:** {query}
 
-Provide a direct answer in this EXACT format:
+Provide a COMPLETE, DETAILED answer in this EXACT format:
 
 📚 **Answer**
-• [Direct answer to the exact question asked]
-• [Key characteristics or properties that answer the question]
-• [Additional relevant detail that answers the question]
+• [Clear, complete definition or explanation that fully answers the question]
+• [Essential characteristics, properties, or key concepts]
+• [Important details and examples that enhance understanding]
+• [Any additional relevant information that completes the explanation]
 
 **STRICT RULES:**
-1. Answer ONLY the question that was asked
-2. If they ask "what is sound" - define what sound IS, not about reflection or other topics
-3. If they ask "what is [concept]" - explain what that concept IS
-4. Use ONLY the provided context that relates to their specific question
-5. If the context doesn't contain the answer, say "The provided context doesn't contain enough information to answer your specific question about [topic]"
-6. Do NOT discuss related topics unless they directly answer the question"""
+1. Provide a COMPLETE answer - don't assume they'll see the image first
+2. Answer ONLY the question that was asked
+3. If they ask "what is sound" - define what sound IS comprehensively
+4. If they ask "what is [concept]" - explain that concept thoroughly
+5. Use ONLY the provided context that relates to their specific question
+6. Make your text explanation self-sufficient and complete
+7. Include key facts, definitions, and examples in your TEXT answer"""
         else:
-            prompt = f"""You are an expert educational AI tutor. The student has asked a specific question and you MUST answer their EXACT question.
+            prompt = f"""You are an expert educational AI tutor. The student has asked a specific question and you MUST provide a COMPLETE, COMPREHENSIVE answer.
 
 **CRITICAL INSTRUCTION**: The student asked: "{query}"
-You MUST provide information that directly answers this specific question. Do NOT discuss unrelated topics.
+You MUST provide a thorough, complete explanation. A relevant educational image will be shown AFTER your text, so your explanation must be comprehensive and self-sufficient.
 
 **Context from PDF:**
 {context}
 
 **Student's EXACT Question:** {query}
 
-Provide a comprehensive answer that directly addresses their question in this EXACT format:
+Provide a comprehensive, complete answer in this EXACT format:
 
-📚 **Direct Answer to Your Question**
-• [Primary explanation that directly answers what they asked]
-• [Key facts that relate to their specific question]
-• [Important details that answer their question]
+📚 **Complete Answer**
+• [Thorough primary explanation that fully addresses what they asked]
+• [Key scientific facts, principles, or definitions]
+• [Important details and characteristics]
+• [Examples or applications that enhance understanding]
 
-💡 **Key Points About [the topic they asked about]**
-• [Specific information from the context that answers their question]
-• [Scientific facts or data that relate to what they asked]
-• [Examples or applications that help answer their question]
+💡 **Key Points**
+• [Specific information from the context about their topic]
+• [Scientific facts, data, or measurements if available]
+• [Real-world examples or practical applications]
+• [Additional important details that complete the answer]
 
 **ABSOLUTE REQUIREMENTS:**
-1. Your answer MUST directly address what they asked
-2. If they ask "what is X" - explain what X IS, not about related topics
-3. If they ask about a specific concept, focus on that concept
-4. Use ONLY context information that helps answer their specific question
-5. If the provided context doesn't answer their specific question, clearly state: "The provided context discusses related topics but doesn't contain enough information to directly answer your question about [their topic]. Based on the available information..."
-6. Do NOT go off on tangents about related but different topics"""
+1. Provide a COMPLETE, COMPREHENSIVE text explanation
+2. Your answer MUST directly address what they asked in detail
+3. Don't say "as shown in the image" - make your text self-sufficient
+4. If they ask "what is X" - explain what X IS thoroughly with all key details
+5. Use ONLY context information that helps answer their specific question
+6. Include definitions, characteristics, examples, and applications in your TEXT
+7. Make your explanation complete enough that someone could understand without seeing any images"""
 
         # Prepare request payload
         payload = {
